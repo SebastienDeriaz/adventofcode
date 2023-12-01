@@ -1,4 +1,7 @@
+from sys import argv, stdin
+
 SPELLED_NUMBERS = {
+    'zero' : '0',
     'one' : '1',
     'two' : '2',
     'three' : '3',
@@ -15,8 +18,7 @@ def is_digit(x):
 
 def decode_line(line) -> list:
     fragments = []
-    words_indices = {k : 0 for k in SPELLED_NUMBERS.values()}
-
+    words_indices = {k : 0 for k in SPELLED_NUMBERS}
     for c in line:
         if is_digit(c):
             fragments.append(c)
@@ -24,14 +26,22 @@ def decode_line(line) -> list:
         else:
             for word, idx in words_indices.items():
                 if c == word[idx]:
-                    print(f"{c} in {word}")
                     # This one is correct, increment its index
                     words_indices[word] += 1
                     if words_indices[word] == len(word):
+                        print(f"{c} is the last of {word} !")
                         # If we've completed the word
                         fragments.append(SPELLED_NUMBERS[word])
-                        # Reset the words_indices
-                        words_indices = {k : 0 for k in words_indices}
+                        # Reset the word
+                        words_indices[word] = 0
+                        # Reset all of them ?
+                        #words_indices = {k : 0 for k in words_indices} # 53498 with it, 53474 without
+                elif idx > 0 and c == word[idx-1]:
+                    # Don't do anything
+                    pass
+                else:
+                    # Reset otherwise
+                    words_indices[word] = 0
     return fragments
 
 def decode_calibration_values(document : str) -> list:
@@ -41,18 +51,28 @@ def decode_calibration_values(document : str) -> list:
     values = []
 
     for line in document.split(LINE_END):
-        print(f"Line {line}")
         fragments = decode_line(line)
-        number = int(fragments[0] + fragments[-1])
-        print(f"Calibration value : {number}")
-        values.append(number)
+        if fragments:
+            number = int(fragments[0] + fragments[-1])
+            print(f"Line '{line}'\n {fragments}\n {number}")
+            values.append(number)
     return values
 
 
 def main():
-    with open('input.txt') as f:
-        result = sum(decode_calibration_values(f.read()))
-        print(f"Sum of all calibration values : {result}")
+    if len(argv) > 1:
+        argument = argv[1]
+        if '.' in argument:
+            with open(argument) as f:
+                data = f.read()
+        else:
+            data = argument
+    else:
+        # Read stdin
+        data = stdin.read()
+    
+    result = sum(decode_calibration_values(data))
+    print(f"Sum of all calibration values : {result}")
 
 
 if __name__ == '__main__':
