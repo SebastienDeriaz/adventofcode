@@ -29,14 +29,11 @@ def decode_line(line) -> list:
                     # This one is correct, increment its index
                     words_indices[word] += 1
                     if words_indices[word] == len(word):
-                        print(f"{c} is the last of {word} !")
                         # If we've completed the word
                         fragments.append(SPELLED_NUMBERS[word])
                         # Reset the word
                         words_indices[word] = 0
-                        # Reset all of them ?
-                        #words_indices = {k : 0 for k in words_indices} # 53498 with it, 53474 without
-                elif idx > 0 and c == word[idx-1]:
+                elif idx == 1 and c == word[idx-1]:
                     # Don't do anything
                     pass
                 else:
@@ -54,7 +51,6 @@ def decode_calibration_values(document : str) -> list:
         fragments = decode_line(line)
         if fragments:
             number = int(fragments[0] + fragments[-1])
-            print(f"Line '{line}'\n {fragments}\n {number}")
             values.append(number)
     return values
 
@@ -72,7 +68,7 @@ def main():
         data = stdin.read()
     
     result = sum(decode_calibration_values(data))
-    print(f"Sum of all calibration values : {result}")
+    print(result)
 
 
 if __name__ == '__main__':
