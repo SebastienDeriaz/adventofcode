@@ -38,7 +38,7 @@ def find_adjacent_number(M, x, y):
                     while xs > 0 and M[ys, xs-1] not in [SYMBOL_NUMBER, SPACER_NUMBER]:
                         xs -= 1
                     yield (xs, ys)
-                    if xs <= 0:
+                    if (xs-x) <= 0:
                         # If we have reach past 0 (or more left), there won't be anything left to read on x
                         break
 
