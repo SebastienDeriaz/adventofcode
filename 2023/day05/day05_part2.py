@@ -31,13 +31,14 @@ def parse_seeds(data):
     # Return the list of seeds
     pattern = 'seeds:([ \w]+)'
     seeds_str = re.match(pattern, data).groups()
-    seeds = [int(x) for x in seeds_str[0].split(' ') if x != '']
+    seeds_ranges = [int(x) for x in seeds_str[0].split(' ') if x != '']
+    seeds = [(start, length) for start, length in zip(seeds_ranges[::2], seeds_ranges[1::2])]
     return seeds
 
-def map_x_to_y(maps, x_values, x, y):
+def map_x_to_y(maps, x_ranges, x, y):
     xi = variables.index(x)
     yi = variables.index(y)
-    values = x_values
+    values = x_values # TODO : what am i gonna do with the ranges
     for i in range(xi, yi):
         map_key = variables[i]
         for vi, v in enumerate(values):
@@ -47,7 +48,7 @@ def map_x_to_y(maps, x_values, x, y):
                     # The value is contained in the map
                     # Convert it
                     values[vi] += _map[0] - _map[1]
-            print(f"{map_key} {v} -> {values[vi]}")
+                    break # It seems like some values overlap
     return values
 
 
@@ -56,11 +57,11 @@ def main():
     file = argv[1]
     with open(file) as f:
         data = f.read()
-
         seeds = parse_seeds(data)
+        print(seeds)
         maps = parse_maps(data)
-        locations = map_x_to_y(maps, [82], 'seed', 'location')
-        print(min(locations))
+        locations = map_x_to_y(maps, seeds, 'seed', 'location')
+        # print(min(locations))
 
 
 if __name__ == '__main__':
