@@ -16,7 +16,6 @@ variables = [
     'location'
 ]
 
-
 def parse_maps(data):
     pattern = '(\w+)-to-(\w+) map:\n((?:[\w ]+\n)+)'
     # Map from x to the next one
@@ -26,7 +25,6 @@ def parse_maps(data):
         maps[a] = map_blocks
     return maps
 
-
 def parse_seeds(data):
     # Return the list of seeds
     pattern = 'seeds:([ \w]+)'
@@ -35,15 +33,50 @@ def parse_seeds(data):
     seeds = [(start, length) for start, length in zip(seeds_ranges[::2], seeds_ranges[1::2])]
     return seeds
 
+
+
+
+def subrange(rng, maps):
+    rng_start, rng_length = rng
+    ranges = []
+    for map_destination, map_source, map_length in maps:
+        if map_source + map_length - 1 <= rng_start and rng_start + rng_length - 1 >= map_source:
+            # map range is inside the original range
+            subrange_start = max(rng_start, map_source)
+            subrange_length = 
+            
+            
+        
+
+
+
+
+
+
+
+
 def map_x_to_y(maps, x_ranges, x, y):
     xi = variables.index(x)
     yi = variables.index(y)
-    values = x_values # TODO : what am i gonna do with the ranges
+    ranges = x_ranges
+    next_ranges = []
     for i in range(xi, yi):
         map_key = variables[i]
-        for vi, v in enumerate(values):
+        for start, length in ranges:
             map_blocks = maps[map_key]
-            for _map in map_blocks:
+            # Split the current range into multiple smaller ones
+            for rng in ranges:
+                
+
+            for map_destination, map_source, map_length in map_blocks:
+                # Create this range
+                # Check if the map source is inside the range
+                
+
+
+                sub_range_start = min(map_source, start)
+
+                
                 if _map[1] <= v <= _map[1] + _map[2]:
                     # The value is contained in the map
                     # Convert it
