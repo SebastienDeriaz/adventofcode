@@ -41,30 +41,44 @@ class Map:
     def end(self):
         return self._source + self._length - 1
 
-def apply_map_to_range(map : Map, range : Range) -> list:
+    def offset(self):
+        return self._offset
+
+def apply_map_to_range(map : Map, _range : Range) -> list:
     # Create three new ranges
     # A : smaller than map
     # B : inside map
     # C : bigger than map
-    ranges = []
-    if range.start() < map.start():
-        # A
-        start = range.start()
-        end = map.start() - 1
+    ranges = [_range] # Initial x->x range
+    if _range.start() < map.start():
+        # A exists
+        start = _range.start()
+        end = min([_range.end(), map.start() - 1])
         length = end - start + 1
-        ranges.append(Range(start, length))
-    if map.end() > range.start():
+        assert length > 0
+        rng = Range(start, length)
+        ranges.append(rng)
+        print(f"A : {rng}")
+
+    if map.end() >= _range.start() and map.start() <= _range.end():
         # B
-        start = max(map.start(), range.start())
-        end = min(map.end(), range.end())
-        length = start - end + 1
-        ranges.append(Range(start, length))
-    if map.end() < range.end():
+        start = max(map.start(), _range.start())
+        end = min(map.end(), _range.end())
+        length = end - start + 1
+        assert length > 0
+        rng = Range(start+map.offset(), length)
+        ranges.append(rng)
+        print(f"B : {rng}")
+        
+    if map.end() < _range.end() and map.start() >= map.end():
         # C
         start = map.end() + 1
-        end = range.end()
+        end = _range.end()
         length = end - start + 1
-        ranges.append(Range(start, length))
+        assert length > 0
+        rng = Range(start, length)
+        ranges.append(rng)
+        print(f"C : {rng}")
 
     return ranges
 
@@ -84,7 +98,7 @@ def parse_maps(data):
     pattern = '(\w+)-to-(\w+) map:\n((?:[\w ]+\n)+)'
     # Map from x to the next one
     maps = {}
-    for a, b, _maps in re.findall(pattern, data):
+    for a, _, _maps in re.findall(pattern, data):
         map_blocks = [Map(*[int(y) for y in x.split(' ') if y != '']) for x in _maps.split('\n') if x != '']
         maps[a] = map_blocks
     return maps
@@ -97,50 +111,37 @@ def parse_seeds(data):
     seeds = [Range(start, length) for start, length in zip(seeds_ranges[::2], seeds_ranges[1::2])]
     return seeds
 
+def apply_map_to_ranges(map : list, ranges : list):
+    ranges_out = []
+    for rng in ranges:
+        ranges_out += apply_map_to_range(map, rng)
+    return ranges_out
 
-
-# def map_x_to_y(maps, x_ranges, x, y):
-#     xi = variables.index(x)
-#     yi = variables.index(y)
-#     ranges = x_ranges
-#     next_ranges = []
-#     for i in range(xi, yi):
-#         map_key = variables[i]
-#         for start, length in ranges:
-#             map_blocks = maps[map_key]
-#             # Split the current range into multiple smaller ones
-#             for rng in ranges:
-                
-
-#             for map_destination, map_source, map_length in map_blocks:
-#                 # Create this range
-#                 # Check if the map source is inside the range
-                
-
-
-#                 sub_range_start = min(map_source, start)
-
-                
-#                 if _map[1] <= v <= _map[1] + _map[2]:
-#                     # The value is contained in the map
-#                     # Convert it
-#                     values[vi] += _map[0] - _map[1]
-#                     break # It seems like some values overlap
-#     return values
-
+def apply_maps_to_seeds(maps, seeds):
+    ranges = seeds
+    for v in variables[:-1]:
+        print(f"Input range : {ranges}")
+        new_ranges = []
+        _maps = maps[v]
+        for _map in _maps:
+            print(f"Apply map : {_map}")
+            output = apply_map_to_ranges(_map, ranges)
+            new_ranges += output
+        
+        ranges = new_ranges
+        print(f"Ranges after {v}-to-x : {ranges}")
+    return ranges
+        
 def main():
     file = argv[1]
     with open(file) as f:
         data = f.read()
         seeds = parse_seeds(data)
-        print(f"Seeds : {seeds}")
         maps = parse_maps(data)
-        print(f"Maps : {maps}")
-        #locations = map_x_to_y(maps, seeds, 'seed', 'location')
-        # print(min(locations))
-
-
-        # TODO : Implement recursive function to apply all the maps on all the ranges
+        #print(f"Maps : {maps}")
+        locations = apply_maps_to_seeds(maps, seeds)
+        print(locations)
+        print(min([l.start() for l in locations]))
 
 
 if __name__ == '__main__':
