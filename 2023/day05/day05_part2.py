@@ -4,6 +4,18 @@
 from sys import argv
 import re
 
+# Each variables[x] can be mapped to variables[x+1]
+variables = [
+    'seed',
+    'soil',
+    'fertilizer',
+    'water',
+    'light',
+    'temperature',
+    'humidity',
+    'location'
+]
+
 class Range:
     def __init__(self, start, length) -> None:
         self._start = start
@@ -44,55 +56,50 @@ class Map:
     def offset(self):
         return self._offset
 
-def apply_map_to_range(map : Map, _range : Range) -> list:
-    # Create three new ranges
-    # A : smaller than map
-    # B : inside map
-    # C : bigger than map
-    ranges = [_range] # Initial x->x range
-    if _range.start() < map.start():
-        # A exists
-        start = _range.start()
-        end = min([_range.end(), map.start() - 1])
-        length = end - start + 1
-        assert length > 0
-        rng = Range(start, length)
-        ranges.append(rng)
-        print(f"A : {rng}")
+def apply_map_to_range(_map : Map, _range : Range) -> list:
+    # Create a single smaller or equal map
+    start = max([_map.start(), _range.start()])
+    end = min([_map.end(), _range.end()])
+    length = end - start + 1
+    if length > 0:
+        # There is a range !
+        return (Range(start, length), Range(start+_map.offset(), length))
 
-    if map.end() >= _range.start() and map.start() <= _range.end():
-        # B
-        start = max(map.start(), _range.start())
-        end = min(map.end(), _range.end())
-        length = end - start + 1
-        assert length > 0
-        rng = Range(start+map.offset(), length)
-        ranges.append(rng)
-        print(f"B : {rng}")
-        
-    if map.end() < _range.end() and map.start() >= map.end():
-        # C
-        start = map.end() + 1
-        end = _range.end()
-        length = end - start + 1
-        assert length > 0
-        rng = Range(start, length)
-        ranges.append(rng)
-        print(f"C : {rng}")
 
-    return ranges
+def apply_maps_to_range(maps : list, _range : Range):
+    print()
+    print(f'Apply {maps} to {_range}')
+    map_ranges = []
+    maps.sort(key=lambda x : x.start())
+    for _map in maps:
+        output = apply_map_to_range(_map, _range)
+        if output is not None:
+            map_ranges.append(output)
 
-# Each variables[x] can be mapped to variables[x+1]
-variables = [
-    'seed',
-    'soil',
-    'fertilizer',
-    'water',
-    'light',
-    'temperature',
-    'humidity',
-    'location'
-]
+    # Add the missing ranges
+    start = _range.start()
+    output_ranges = []
+    original_range = None
+    for original_range, mapped_range in sorted(map_ranges, key=lambda x : x[0].start()):
+        if original_range.start() > start:
+            # Add a non-map range
+            output_ranges.append((Range(start, original_range.start() - start), Range(start, original_range.start() - start)))
+        # Add the current map range
+        output_ranges.append((original_range, mapped_range))
+        start = mapped_range.end() + 1
+    if original_range is None:
+        # No map-range at all, return the original range
+        output_ranges.append((_range, _range))
+    elif original_range.end() < _range.end():
+        # Add the final non-map range
+        _rng = Range(original_range.end()+1, _range.end() - original_range.end())
+        output_ranges.append((_rng, _rng))
+
+    output = sorted([x[1] for x in output_ranges], key=lambda x : x.start())
+    #assert output[0].start() > 0
+    return output
+
+
 
 def parse_maps(data):
     pattern = '(\w+)-to-(\w+) map:\n((?:[\w ]+\n)+)'
@@ -111,37 +118,30 @@ def parse_seeds(data):
     seeds = [Range(start, length) for start, length in zip(seeds_ranges[::2], seeds_ranges[1::2])]
     return seeds
 
-def apply_map_to_ranges(map : list, ranges : list):
-    ranges_out = []
-    for rng in ranges:
-        ranges_out += apply_map_to_range(map, rng)
-    return ranges_out
-
-def apply_maps_to_seeds(maps, seeds):
-    ranges = seeds
-    for v in variables[:-1]:
-        print(f"Input range : {ranges}")
-        new_ranges = []
-        _maps = maps[v]
-        for _map in _maps:
-            print(f"Apply map : {_map}")
-            output = apply_map_to_ranges(_map, ranges)
-            new_ranges += output
-        
-        ranges = new_ranges
-        print(f"Ranges after {v}-to-x : {ranges}")
-    return ranges
+def apply_maps_to_ranges(maps : list, ranges : list):
+    _ranges = []
+    for _range in ranges:
+        _ranges += apply_maps_to_range(maps, _range)
+    return sorted(_ranges, key=lambda x : x.start())
         
 def main():
     file = argv[1]
     with open(file) as f:
         data = f.read()
         seeds = parse_seeds(data)
-        maps = parse_maps(data)
-        #print(f"Maps : {maps}")
-        locations = apply_maps_to_seeds(maps, seeds)
-        print(locations)
-        print(min([l.start() for l in locations]))
+        variable_maps = parse_maps(data)
+
+        ranges = seeds
+        #for v in variables[:-1]:
+        for v in variables[:-1]:
+            print(f"###################### Apply variable {v} ####################################")
+            ranges = apply_maps_to_ranges(variable_maps[v], ranges)
+
+        print(ranges)
+
+        #print([x2.start() - x1.start() for x1, x2 in zip(ranges[:-1], ranges[1:])])
+
+        print(ranges[0].start())
 
 
 if __name__ == '__main__':
