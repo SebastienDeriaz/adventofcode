@@ -146,9 +146,6 @@ def apply_maps_to_ranges(maps : list, ranges : list):
     _range : Range
     for _range in ranges:
         new_ranges += _range.apply_maps(maps)
-    #print(f'Ranges after map (unreduced) : {new_ranges}')
-    #new_ranges = reduce(new_ranges)
-    #print(f'Ranges after map : {new_ranges}')
     return new_ranges
 
 
@@ -167,7 +164,7 @@ def main():
 
         
 
-        #print(min([r.start() for r in ranges]))
+        print(min([r.start() for r in ranges]))
 
 
 
