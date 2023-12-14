@@ -1,5 +1,6 @@
 from sys import argv
 
+
 BROKEN = '#'
 UNKNOWN = '?'
 OPERATIONAL = '.'
@@ -14,12 +15,10 @@ def positions_string(N, positions, counts):
 def positions_match_conditions(positions, conditions, counts):
     pos_string = positions_string(len(conditions), positions, counts)
     assert len(pos_string) == len(conditions)
-    output = True
-    for c, p in zip(conditions, pos_string):
-        if c == '?' or c == p:
-            output = False
+    output = all([c == '?' or c == p for c, p in zip(conditions, pos_string)])
     #print(f'{pos_string} == {conditions} ({output})')
     return output
+
 
 def try_all(conditions, positions, counts, i):
 
@@ -47,18 +46,17 @@ def try_all(conditions, positions, counts, i):
             
             new_conditions = positions_string(len(conditions), positions[:i] + [k] + positions[i+1:], counts)
             pos_max = k + counts[i] - 1
-            if sum([c == BROKEN and nc == OPERATIONAL for c, nc in zip(conditions[:pos_max], new_conditions[:pos_max])]) > 0:
+            if any([c == BROKEN and nc == OPERATIONAL for c, nc in zip(conditions[:pos_max], new_conditions[:pos_max])]):
                 continue
 
             positions[i] = k
-            if i < len(counts) - 6:
+            if i < len(counts) - 3:
                 print(conditions)
                 print(positions_string(len(conditions), positions, counts))
 
             if i < len(positions) - 1:
                 N += try_all(conditions, positions, counts, i+1)
             else:
-                #print('  '*i, end='')
                 if positions_match_conditions(positions, conditions, counts):
                     N += 1
 
@@ -75,8 +73,10 @@ def count_arangements(conditions, counts):
     print(positions_string(N, positions, counts))
     return try_all(conditions, positions, counts, 0)
 
+
 def unfold(conditions, counts, unfold_factor):
     return '?'.join([conditions] * unfold_factor), counts * unfold_factor
+
 
 
 def parse_line(line : str):
