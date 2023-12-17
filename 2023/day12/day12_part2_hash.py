@@ -38,6 +38,18 @@ perf_hist =  []
 perf_hist_A = []
 
 
+def hash_string(N, broken_hash : int, operational_hash : int = None):
+    output = ''
+    for i in range(N):
+        b = (broken_hash >> i) & 1
+        if b == 1:
+            output += BROKEN
+        elif operational_hash is not None and ((operational_hash >> i) & 1) == 0:
+            output += UNKNOWN
+        else:
+            output += OPERATIONAL
+    return output
+
 def _hash(N : int, positions : list, counts : list):
     n = 0
     for p, c in zip(positions, counts):
@@ -61,26 +73,37 @@ def try_all(N : int, broken_hash : int, operational_hash : int, positions, count
         _max = N - (sum(counts[i+1:]) + (len(counts)-i))
         _max = max(_max, _min)
 
+    counter = 0
+
     if _max >= _min:
         _rng = range(_max, _min-1, -1)
         for k in _rng:
             positions[i] = k
             new_hash = _hash(N, positions, counts)
+            mask = 2**(k + counts[i] + 1) - 1
 
-            # print(f'new         : {disp_hash(N, new_hash)}')
-            # print(f'broken      : {disp_hash(N, broken_hash)}')
-            # print(f'operational : {disp_hash(N, operational_hash)}')
-            input()
-            if broken_hash & ~new_hash > 0:
+            print(hash_string(N, broken_hash, operational_hash))
+            print(hash_string(N, new_hash), end='')
+
+            
+            if (broken_hash & ~new_hash) & mask > 0:
+                print(f' -')
                 continue
             
-            if operational_hash & new_hash > 0:
+            if (operational_hash & new_hash) & mask > 0:
+                print(f' -')
                 continue
-
+            
+                
+            print(f' +')
             if i == len(positions) - 1:
-                N += 1
+                counter += 1
+                print('Add !')
+                # print(f'new         : {disp_hash(N, new_hash)}')
+                # print(f'broken      : {disp_hash(N, broken_hash)}')
+                # print(f'operational : {disp_hash(N, operational_hash)}')
             else:
-                try_all(N, broken_hash, operational_hash, positions, counts, i+1)
+                counter += try_all(N, broken_hash, operational_hash, positions, counts, i+1)
 
 
             # pos_max = k + counts[i] + 1
@@ -105,7 +128,7 @@ def try_all(N : int, broken_hash : int, operational_hash : int, positions, count
     #     stop = perf_counter_ns()
     #     perf_hist.append(stop - start)
 
-    return N
+    return counter
 
 def count_arangements(conditions, counts):
     N = len(conditions)
@@ -139,19 +162,19 @@ def main():
     with open(file) as f:
         lines = f.readlines()
         N = 0
-        for il, line in enumerate(lines):
+        for il, line in enumerate(lines[1:]):
             parsed_line = parse_line(line)
             
-            n1 = count_arangements(*parsed_line)
-            n2 = count_arangements(*unfold(*parsed_line, 2))
-            n3 = count_arangements(*unfold(*parsed_line, 3))
-            n4 = count_arangements(*unfold(*parsed_line, 4))
-            n5 = count_arangements(*unfold(*parsed_line, 5))
+            for n_unfold in range(5):
+                unfolded_line = unfold(*parsed_line, n_unfold+1)
+                print(f"Line : {unfolded_line}")
+                n = count_arangements(*unfolded_line)
+                print(f'{n_unfold+1}x : {n}')
+                break
+            break
             print(f'Line {il+1} {parsed_line}: {n1}, {n2}, {n3}, {n4}')
-            # f = n2 // n1
-            # #nuf = n1 * f**(UNFOLD_FACTOR-1)
-            # nuf = n5
-            # N += nuf
+            nuf = n5
+            N += nuf
 
         print(f'Total : {N}')
         #print(f'mean : {np.mean(perf_hist)*1e-3:.1f} us, std : {np.std(perf_hist)*1e-3:.1f} us')
