@@ -91,14 +91,11 @@ def main():
             w = workflows[START_WORKFLOW]
             w : Workflow
             while True:
-                print(f'Part {part}')
                 new_w = w.check_part(part)
                 if new_w == ACCEPT_WORKFLOW:
-                    print(f'  accept')
                     N += sum(part.categories().values())
                     break
                 elif new_w == REFUSE_WORKFLOW:
-                    print(f'  refuse')
                     break
                 w = workflows[new_w]
 
