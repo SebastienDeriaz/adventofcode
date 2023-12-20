@@ -134,7 +134,6 @@ class Simulator:
                 else:
                     high += 1
 
-                print(pulse)
                 if pulse.destination in self._modules:
                     new_queue += self._modules[pulse.destination].simulate(pulse.value, pulse.source)
                 else:
@@ -151,10 +150,8 @@ def main():
     simulator = Simulator()
     with open(file) as f:
         simulator.load_schematic(f.read())
-        print(simulator._modules)
         N = [0, 0]
         for i in range(1000):
-            print(f'\n{i=}')
             N = [(n + x) for n, x in zip(N, simulator.simulate())]
 
         print(N[0] * N[1])
