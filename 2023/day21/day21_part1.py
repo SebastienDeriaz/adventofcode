@@ -49,30 +49,17 @@ def iterate(matrix):
 
 
 
-N_STEPS = 2000
+N_STEPS = 64
 
 def main():
     file = argv[1]
     with open(file) as f:
         matrix = parse_matrix(f.read())
-        hist = []
-        matrices = []
-        for i in range(N_STEPS):
-            matrix = iterate(matrix)
-            N = np.sum(matrix == REACHED_TILE)
-            if N in hist:
-                ni = hist.index(N)
-                print(f'{i} : Value {N} repeated at {ni}')
-                print(f'Test : {np.array_equal(matrix, matrices[ni])}')
-                print(matrix)
-                print(matrices[ni])
-                input()
-            hist.append(N)
-            matrices.append(matrix)
 
-            # At some point (131th iteration or something), the matrix repeats itself
-            # So it is possible to extrapolate (the infinite space has to be taken into account as well)
-        print(N)
+        for _ in range(N_STEPS):
+            matrix = iterate(matrix)
+
+        print(np.sum(matrix == REACHED_TILE))
 
 
 if __name__ == '__main__':

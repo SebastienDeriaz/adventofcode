@@ -79,54 +79,20 @@ def try_all(N : int, broken_hash : int, operational_hash : int, positions, count
         _rng = range(_max, _min-1, -1)
         for k in _rng:
             positions[i] = k
-            new_hash = _hash(N, positions, counts)
-            mask = 2**(k + counts[i] + 1) - 1
-
-            print(hash_string(N, broken_hash, operational_hash))
-            print(hash_string(N, new_hash), end='')
+            new_hash = _hash(N, positions[:i+1], counts)
+            mask = 2**(k + counts[i]) - 1
 
             
             if (broken_hash & ~new_hash) & mask > 0:
-                print(f' -')
                 continue
             
             if (operational_hash & new_hash) & mask > 0:
-                print(f' -')
                 continue
-            
-                
-            print(f' +')
+
             if i == len(positions) - 1:
                 counter += 1
-                print('Add !')
-                # print(f'new         : {disp_hash(N, new_hash)}')
-                # print(f'broken      : {disp_hash(N, broken_hash)}')
-                # print(f'operational : {disp_hash(N, operational_hash)}')
             else:
                 counter += try_all(N, broken_hash, operational_hash, positions, counts, i+1)
-
-
-            # pos_max = k + counts[i] + 1
-            # if i == 0:
-            #     pos_min = 0
-            # else:
-            #     pos_min = _min
-
-            # if i < len(counts) - 5:
-            #     print(f'{conditions} {",".join([str(c) for c in counts])}')
-            #     print(new_conditions)
-
-            # if operational_hash & _hash(N, [k], [counts[i]]) > 0:
-            #     # Skip it, it's not even possible
-            #     continue
-            
-
-            # if any([(c == BROKEN and nc == OPERATIONAL) for (c, nc) in zip(conditions[pos_min:pos_max], new_conditions[pos_min:pos_max])]):
-            #     continue
-
-    # if i == len(positions) - 1:
-    #     stop = perf_counter_ns()
-    #     perf_hist.append(stop - start)
 
     return counter
 
@@ -154,7 +120,7 @@ def parse_line(line : str):
     counts = [int(x) for x in counts.split(',')]
     return conditions, counts
 
-UNFOLD_FACTOR = 4
+UNFOLD_FACTOR = 5
 
 def main():
     global perf_hist
@@ -162,19 +128,17 @@ def main():
     with open(file) as f:
         lines = f.readlines()
         N = 0
-        for il, line in enumerate(lines[1:]):
+        for line in tqdm(lines):
             parsed_line = parse_line(line)
             
-            for n_unfold in range(5):
-                unfolded_line = unfold(*parsed_line, n_unfold+1)
-                print(f"Line : {unfolded_line}")
-                n = count_arangements(*unfolded_line)
-                print(f'{n_unfold+1}x : {n}')
-                break
-            break
-            print(f'Line {il+1} {parsed_line}: {n1}, {n2}, {n3}, {n4}')
-            nuf = n5
-            N += nuf
+            unfolded_line = unfold(*parsed_line, UNFOLD_FACTOR)
+            #print(f"Line : {unfolded_line}")
+            n = count_arangements(*unfolded_line)
+            N += n
+
+            #print(f'Line {il+1} {parsed_line}: {n1}, {n2}, {n3}, {n4}')
+            #nuf = n5
+            #N += nuf
 
         print(f'Total : {N}')
         #print(f'mean : {np.mean(perf_hist)*1e-3:.1f} us, std : {np.std(perf_hist)*1e-3:.1f} us')
