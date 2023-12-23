@@ -96,9 +96,7 @@ def find_longest_route(map : np.array, start : Vec2D):
     p = start
     N = 0
     while True:
-        #input()
         path_map[p.idx()] = PATH
-        #print_map(path_map)
         N += 1
 
         next_ps = find_adjacent(path_map, p)
@@ -118,7 +116,6 @@ def find_longest_route(map : np.array, start : Vec2D):
             n, p, new_map = max(lengths, key=lambda x : x[0])
             path_map[new_map == PATH] = PATH
             N += n - 1
-    #N = np.sum(path_map == PATH) - 1
     return N, p, path_map
 
 
@@ -128,13 +125,9 @@ def main():
         data = f.read()
         map = parse_map(data)
 
-        start = Vec2D(1, 0)
-
-        #N = find_longest_route(map, start)
-        #print(f'N : {N}')
         N, _, new_map = find_longest_route(map, Vec2D(1, 0))
-        print(N - 1) # Remove one because the first point is "S"
         print_map(new_map)
+        print(N - 1) # Remove one because the first point is "S"
 
 if __name__ == '__main__':
     main()
