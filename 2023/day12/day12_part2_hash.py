@@ -1,7 +1,4 @@
 from sys import argv
-from tqdm import tqdm
-from time import perf_counter_ns
-import numpy as np
 
 BROKEN = '#'
 UNKNOWN = '?'
@@ -13,26 +10,6 @@ def positions_string(N, positions, counts):
         _str[p:p+c] = [BROKEN] * c
 
     return ''.join(_str)
-
-
-# def positions_match_conditions(positions, conditions, counts, broken_groups):
-#     output_A = True
-#     for p, c in zip(positions, counts):
-#         if OPERATIONAL in conditions[p:p+c]:
-#             output_A = False
-#             break
-#     for b, c in broken_groups:
-#         if 
-
-#     pos_string = positions_string(len(conditions), positions, counts)
-#     assert len(pos_string) == len(conditions)
-#     output_B = all([c == UNKNOWN or c == p for c, p in zip(conditions, pos_string)])
-#     if output_B != output_A:
-#         print(f'Positions : {positions}')
-#         print(f'Counts : {counts}')
-#         print(f'Conditions : {conditions}')
-#         input(f'pos_string : {pos_string}')
-#     return output_B
 
 perf_hist =  []
 perf_hist_A = []
@@ -79,23 +56,37 @@ def try_all(N : int, broken_hash : int, operational_hash : int, positions, count
 
     counter = 0
 
+    print(f'_min : {_min}')
+    print(f'_max : {_max}')
+    if i < 2:
+        print(f'positions[i-1] : {positions[i-1]}, counts[i-1] {counts[i-1]}')
+        print(f'{i} {_min} -> {_max}')
+        input()
     if _max >= _min:
         _rng = range(_max, _min-1, -1)
         for k in _rng:
+            print(f'Set positions[{i}]={k}')
             positions[i] = k
             new_hash = _hash(N, positions[:i+1], counts)
             mask = 2**(k + counts[i]) - 1
 
+            print(disp_hash(N, broken_hash))
+            print(disp_hash(N, new_hash))
+            input()
+
             
             if (broken_hash & ~new_hash) & mask > 0:
+                print(' skip A')
                 continue
             
             if (operational_hash & new_hash) & mask > 0:
+                print(' skip B')
                 continue
+
+            print(' keep')
 
             if i == len(positions) - 1:
                 counter += 1
-                #print(disp_hash(N, new_hash).replace('0', '.').replace('1', '#'))
             else:
                 counter += try_all(N, broken_hash, operational_hash, positions, counts, i+1)
 
@@ -104,14 +95,15 @@ def try_all(N : int, broken_hash : int, operational_hash : int, positions, count
 def count_arangements(conditions, counts):
     N = len(conditions)
     p = N - sum(counts) - len(counts) + 1
+
     positions = []
     for i, c in enumerate(counts):
         positions.append(p)
         p += c + 1
 
+    
     broken_hash = sum([2**i for i, c in enumerate(conditions) if c == BROKEN])
     operational_hash = sum([2**i for i, c in enumerate(conditions) if c == OPERATIONAL])
-
     return try_all(len(conditions), broken_hash, operational_hash, positions, counts, 0)
 
 
@@ -138,23 +130,9 @@ def main():
             print(f'Line {i+1}')
             parsed_line = parse_line(line)
 
-
-            
-
-            previous_value = 1
-            previous_expanded = 1
-            for uf in range(1, UNFOLD_FACTOR+1):
-                unfolded_line = unfold(*parsed_line, uf)
-                expanded_line = (unfolded_line[0] + UNKNOWN, unfolded_line[1])
-                n = count_arangements(*unfolded_line)
-                n_expanded = count_arangements(*expanded_line)
-                if uf > 1:
-                    print(f' {uf} : {n}/({n_expanded}) x{n / previous_value:.2f}/(x{n_expanded / previous_expanded:.2f}) ')
-                else:
-                    print(f' {uf} : {n} ({n_expanded})')
-
-                previous_value = n
-                previous_expanded = n_expanded
+            unfolded_line = unfold(*parsed_line, UNFOLD_FACTOR)
+            n = count_arangements(*unfolded_line)
+            print(f'  {n}')
                 
             N += n
 
