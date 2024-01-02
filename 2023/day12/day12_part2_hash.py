@@ -38,7 +38,10 @@ def disp_hash(N, hash):
 
 call_counter = 0
 
+hash_counter = 0
+
 def try_all(N : int, broken_hash : int, operational_hash : int, positions, counts, i):
+    global hash_counter
     global call_counter
     call_counter += 1
     if i == 0:
@@ -56,34 +59,35 @@ def try_all(N : int, broken_hash : int, operational_hash : int, positions, count
 
     counter = 0
 
-    print(f'_min : {_min}')
-    print(f'_max : {_max}')
-    if i < 2:
-        print(f'positions[i-1] : {positions[i-1]}, counts[i-1] {counts[i-1]}')
-        print(f'{i} {_min} -> {_max}')
-        input()
+    # if i < 2:
+    #     print(f'positions[i-1] : {positions[i-1]}, counts[i-1] {counts[i-1]}')
+    # print(f'{i} {_min}->{_max}')
     if _max >= _min:
         _rng = range(_max, _min-1, -1)
         for k in _rng:
-            print(f'Set positions[{i}]={k}')
             positions[i] = k
             new_hash = _hash(N, positions[:i+1], counts)
             mask = 2**(k + counts[i]) - 1
-
-            print(disp_hash(N, broken_hash))
-            print(disp_hash(N, new_hash))
-            input()
-
             
+            # print(f'Operational hash  : {disp_hash(N, operational_hash)}')
+            # print(f'{hash_counter:05} New hash  : {disp_hash(N, new_hash)}')
+            hash_counter += 1
+
+            _continue = False
             if (broken_hash & ~new_hash) & mask > 0:
-                print(' skip A')
-                continue
+                # print(' skip A')
+                _continue = True
             
-            if (operational_hash & new_hash) & mask > 0:
-                print(' skip B')
+            if (operational_hash & new_hash) & mask > 0 and _continue == False:
+                # print(' skip B')
+                _continue = True
+
+            if not _continue:
+                # print(' keep')
+                pass
+            if _continue:
                 continue
 
-            print(' keep')
 
             if i == len(positions) - 1:
                 counter += 1
@@ -101,7 +105,6 @@ def count_arangements(conditions, counts):
         positions.append(p)
         p += c + 1
 
-    
     broken_hash = sum([2**i for i, c in enumerate(conditions) if c == BROKEN])
     operational_hash = sum([2**i for i, c in enumerate(conditions) if c == OPERATIONAL])
     return try_all(len(conditions), broken_hash, operational_hash, positions, counts, 0)
@@ -126,7 +129,7 @@ def main():
     with open(file) as f:
         lines = f.readlines()
         N = 0
-        for i, line in enumerate(lines[:15]):
+        for i, line in enumerate(lines):
             print(f'Line {i+1}')
             parsed_line = parse_line(line)
 

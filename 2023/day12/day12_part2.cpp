@@ -21,30 +21,21 @@ std::map<char, Type> symbol_map = {
 
 const unsigned int unfold_factor = 5;
 
-class Hash {
-    const unsigned int bytes_per_int = 8;
-    std::vector<uint64_t> buffer;
+typedef unsigned __int128 uint128_t;
 
-   public:
+class Hash {
+    uint128_t bits = 0;
     unsigned int n_bits = 0;
+   public:
     Hash(){};
     void load(std::string description, std::map<char, uint8_t> symbol_map) {
         n_bits = (description.length());
-        unsigned int n_ints = std::ceil(n_bits / 8 / bytes_per_int);
 
         uint8_t bit_counter = 0;
-
-        uint64_t value = 0;
         for (char d : description) {
-            if (bit_counter == bytes_per_int * 8) {
-                // Add a new value
-                buffer.push_back(value);
-                value = 0;
-            }
-            value |= ((uint64_t)symbol_map[d] << bit_counter);
+            bits |= ((uint128_t)symbol_map[d] << bit_counter);
             bit_counter++;
         }
-        buffer.push_back(value);
     }
 
     Hash(std::string description, std::map<char, uint8_t> symbol_map) {
@@ -53,87 +44,60 @@ class Hash {
 
     Hash(unsigned int N, unsigned int n_mask) {
         // Create a mask
-        uint8_t bit_counter = 0;
-        n_bits = N;
+        bits = 1;
+        bits <<= (n_mask - 1);
+        bits -= 1;
 
-        uint64_t value = 0;
-        for (unsigned int i = 0;i < N;i++) {
-            if (bit_counter == bytes_per_int * 8) {
-                // Add a new value
-                buffer.push_back(value);
-                value = 0;
-            }
-            value |= (uint64_t)(i < n_mask ? 1 : 0) << bit_counter++;
-        }
-        buffer.push_back(value);
+        n_bits = N;
     }
 
     Hash(unsigned int N, std::vector<unsigned int> positions, std::vector<unsigned int> counts) {
         n_bits = N;
-        unsigned int n_ints = std::ceil(n_bits / (8 * bytes_per_int));
-        unsigned int bit_counter = 0;
-        unsigned int byte_counter = 0;
-
-        for (unsigned int i = 0;i < n_ints;i++) {
-            buffer.push_back(0);
-        }
 
         for (unsigned int i = 0; i < positions.size(); i++) {
             auto p = positions[i];
             auto c = counts[i];
 
             for (unsigned int k = p; k < p + c;k++) {
-                bit_counter = k % (8 * bytes_per_int);
-                byte_counter = (unsigned int)(k - bit_counter) / (8 * bytes_per_int);
-                buffer.at(byte_counter) |= 1 << bit_counter;
+                bits |= (uint128_t)1 << (uint128_t)k;
             }
         }
     }
 
-    Hash(std::vector<uint64_t> buffer, unsigned int n_nits) : buffer(buffer), n_bits(n_bits) {
-    }
+    
 
     std::string to_string() {
-        std::string output;
-        for (unsigned int i = 0; i < buffer.size(); i++) {
-            unsigned int max_length = (unsigned int)8*bytes_per_int;
-            unsigned int effective_length = (unsigned int)n_bits - i * (8*bytes_per_int);
-            std::string bits = std::bitset<64>(buffer[i]).to_string().substr(0, std::min(max_length, effective_length));
-            std::reverse(bits.begin(), bits.end());
-            output.append(bits);
-        }
-        return output;
+        std::string bits_string = std::bitset<128>(bits).to_string();
+        std::reverse(bits_string.begin(), bits_string.end());
+        return bits_string.substr(0, n_bits);
     }
 
     Hash invert() {
-        std::vector<uint64_t> new_buffer;
-        unsigned int i = 0;
-        for (auto b : buffer) {
-            uint64_t mask = (1 << std::min((unsigned int)8*bytes_per_int, n_bits - i * (8*bytes_per_int))) - 1;
-            new_buffer.push_back(b & mask);
-            i++;
-        }
-        return Hash(new_buffer, n_bits);
+        uint128_t mask = 1;
+        mask <<= (n_bits - 1);
+        mask -= 1;
+        Hash newHash;
+        newHash.bits = ~bits & mask;
+        newHash.n_bits = n_bits;
+        return newHash;
     }
 
     bool any() {
-        for (auto b : buffer) {
-            if (b) {
-                return true;
-            }
-        }
-        return false;
+        return bits > 0;
     }
 
     Hash operator&(const Hash& other) 
     { 
-        std::vector<uint64_t> new_buffer;
-        for (unsigned int i = 0;i < buffer.size();i++) {
-            uint64_t mask = (1 << std::min((unsigned int)8*bytes_per_int, n_bits - i * (8*bytes_per_int))) - 1;
-            new_buffer.push_back(buffer.at(i) & mask & other.buffer.at(i));
-        }
-        return Hash(new_buffer, n_bits);;
-    } 
+        //uint128_t mask = (1 << std::min((unsigned int)8*bytes_per_int, n_bits - i * (8*bytes_per_int))) - 1;
+        Hash newHash;
+        newHash.bits = bits & other.bits;
+        newHash.n_bits = n_bits;
+        return newHash;
+    }
+
+    unsigned int size() {
+        return n_bits;
+    }
 };
 
 class Line {
@@ -144,7 +108,6 @@ class Line {
     std::vector<unsigned int> counts;
 
     Line(std::string line) {
-        std::cout << "Creating a new line..." << std::endl;
         std::size_t separator_pos = line.find(' ');
         // Parse sequence (#.? etc...)
         std::string sequence = line.substr(0, separator_pos);
@@ -159,9 +122,7 @@ class Line {
         }
 
         operational_hash.load(sequence_unfold, {{'#', 0}, {'?', 0}, {'.', 1}});
-
         broken_hash.load(sequence_unfold, {{'#', 1}, {'?', 0}, {'.', 0}});
-
         // Parse counts
         std::string counts_str = line.substr(separator_pos + 1);
 
@@ -178,15 +139,16 @@ class Line {
             counts.insert(counts.end(), counts_single.begin(), counts_single.end());
         }
 
-        std::cout << std::endl;
     }
 
     unsigned long try_all(unsigned long N, std::vector<unsigned int> positions, std::vector<unsigned int> counts, unsigned int i=0) {
+        static unsigned long hash_counter = 0;
         static unsigned long call_counter = 0;
         call_counter++;
-        unsigned int _min, _max;
+        int _min, _max;
         std::string test;
         unsigned int counter = 0;
+        bool _continue = false;
 
         
         if (i) {
@@ -206,16 +168,9 @@ class Line {
         }
 
         
-        if (i < 2) {
-            std::cout << i << " " << _min << "->" << _max << std::endl;
-            if (i > 0) {
-                std::cout << "positions[i-1] : " << positions.at(i-1) << ", counts[i-1] : " << counts.at(i-1) << std::endl;
-            }
-            
-        }
+        //std::cout << i << " " << _min << "->" << _max << std::endl;
         if (_max >= _min) {
-            for (unsigned int k = _max;k >= _min;k--) {
-                std::cout << "Set positions[" << i << "]=" << k << std::endl;
+            for (int k = _max;k >= _min;k--) {
                 positions.at(i) = k;
 
                 std::vector<unsigned int> positions_sublist;
@@ -224,26 +179,34 @@ class Line {
                     positions_sublist.push_back(positions[j]);
                     counts_sublist.push_back(counts[j]);
                 }
+                
 
                 Hash new_hash(N, positions_sublist, counts_sublist);
                 Hash mask(N, k + counts[i]);
+                Hash tempHash = new_hash.invert();
+                // std::cout << "operational hash : " << operational_hash.to_string() << std::endl;
+                // std::cout << hash_counter++ << " new hash : " << new_hash.to_string() << std::endl;
 
-                std::cout << "mask             : " << mask.to_string() << std::endl;
-                std::cout << "broken hash      : " << broken_hash.to_string() << std::endl;
-                std::cout << "operational hash : " << broken_hash.to_string() << std::endl;
-                std::cout << "new hash         : " << new_hash.to_string() << std::endl;
-                std::cin >> test;
-                if (((operational_hash & new_hash) & mask).any()) {
-                    std::cout << " skip B" << std::endl;
-                    continue;
-                }
-
+                _continue = false;
+                
                 if (((broken_hash & new_hash.invert()) & mask).any()) {
-                    std::cout << " skip A" << std::endl;
-                    continue;
+                    // std::cout << " skip A" << std::endl;
+                    _continue = true;
                 }
 
-                std::cout << " keep" << std::endl;
+                if (((operational_hash & new_hash) & mask).any() && _continue == false) {
+                    // std::cout << " skip B" << std::endl;
+                    _continue = true;
+                }
+
+                if (!_continue) {
+                    // std::cout << " keep" << std::endl;
+                }
+
+                //std::cin >> test;
+                if (_continue) {
+                    continue;
+                }
 
                 if (i == positions.size() - 1) {
                     counter += 1;
@@ -255,24 +218,21 @@ class Line {
             }
         }
 
+        // std::cout << "Call counter : " << call_counter << std::endl;
         return counter;
 
     }
 
     unsigned long count_arangements() {
         std::vector<unsigned int> positions;
-        unsigned int p = operational_hash.n_bits - std::accumulate(counts.begin(), counts.end(), decltype(counts)::value_type(0)) - counts.size() + 1;
+        unsigned int p = operational_hash.size() - std::accumulate(counts.begin(), counts.end(), decltype(counts)::value_type(0)) - counts.size() + 1;
         for (auto c : counts) {
             positions.push_back(p);
             p += c + 1;
         }
-        return try_all(broken_hash.n_bits, positions, counts, 0);
+        return try_all(broken_hash.size(), positions, counts, 0);
     }
 };
-
-
-
-
 
 
 int main(int argc, char **argv) {
@@ -284,13 +244,14 @@ int main(int argc, char **argv) {
     }
 
     std::string line;
+    unsigned int line_counter = 1;
+    unsigned long total = 0;
+    unsigned long n = 0;
     while (std::getline(inputFile, line)) {
         Line newLine(line);
-        std::cout << newLine.count_arangements() << std::endl;
-
-        // std::pair<std::string, std::vector<int>> parsedLine =
-        // parseLine(line); std::string conditions = parsedLine.first;
-        // std::vector<int> counts = parsedLine.second;
+        n = newLine.count_arangements();
+        std::cout << "line " << line_counter++ << " : " << n << std::endl;
+        total += n;
     }
 
     inputFile.close();
