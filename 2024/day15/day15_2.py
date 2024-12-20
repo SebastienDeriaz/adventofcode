@@ -9,6 +9,8 @@ BOX_RIGHT = ']'
 ROBOT = '@'
 EMPTY = '.'
 
+DISPLAY = True
+
 UP = np.array([-1, 0])
 DOWN = np.array([1, 0])
 RIGHT = np.array([0, 1])
@@ -131,7 +133,6 @@ def move_robot_and_boxes(matrix, moves):
     robot = np.array([R[0], C[0]])
 
     for m in moves:
-
         output = recursive_find_boxes(matrix, robot, m)
         #print(f'{output=}')
         if output is not None:
@@ -142,8 +143,11 @@ def move_robot_and_boxes(matrix, moves):
                 matrix[tuple(c)] = matrix[tuple(c-m)]
                 matrix[tuple(c-m)] = EMPTY
             robot += m
-        
 
+        if DISPLAY:
+            print_map(matrix)
+            sleep(0.1)
+        
     return matrix
 
 
