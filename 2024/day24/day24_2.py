@@ -2,8 +2,6 @@ import sys
 import re
 from enum import Enum
 from dataclasses import dataclass
-from random import randint
-from time import sleep
 import math
 
 class Operation(Enum):
@@ -48,7 +46,7 @@ def parse_file(file):
 def solve(v, gates, initial):
     solved_gates = {}
     if v in initial:
-        #solved_gates[v] = initial[v]
+        solved_gates[v] = initial[v]
         return initial[v], solved_gates
     elif v in gates:
         # Calculate value
@@ -75,8 +73,10 @@ class Calculator:
         self.swapped_gates = self.gates.copy()
         self.N = N
 
+        self.output_gates = [f'z{i:02}' for i in range(N+1)]
 
-    def swap(self, swaps : list):
+
+    def set_swaps(self, swaps : list):
         self.swapped_gates = self.gates.copy()
         for a, b in swaps:
             self.swapped_gates[a], self.swapped_gates[b] = self.swapped_gates[b], self.swapped_gates[a]
@@ -87,116 +87,25 @@ class Calculator:
             initial[f'x{n:02}'] = (x >> n) & 0x01
             initial[f'y{n:02}'] = (y >> n) & 0x01
 
-
-        output_values = {x : solve(x, self.swapped_gates, initial) for x in sorted(filter(lambda x : x.startswith('z'), self.swapped_gates))}
+        output_values = {x : solve(x, self.swapped_gates, initial) for x in self.output_gates}
         
         gates = {}
 
-        for z, gate_values in output_values.values():
+        for output_gate, (z, gate_values) in output_values.items():
+            gates[output_gate] = {}
             for gate, value in gate_values.items():
-                gates[gate] = value
+                gates[output_gate][gate] = value
 
         return sum([2**i * x for i, (x, _) in enumerate(output_values.values())]), gates
-
-def wrong_inputs_per_wrong_gate(gate : Gate, false_value):
-    if gate.operation == Operation.AND:
-        if false_value == 0:
-            # Both gate are false
-            return [gate.in1, gate.in2]
-        # Cannot tell otherwise
-    elif gate.operation == Operation.OR:
-        if false_value == 1:
-            # Both gate are false
-            return [gate.in1, gate.in2]
-        # Cannot tell otherwise
-    elif gate.operation == Operation.XOR:
-        pass
-
-
-def backtrack_score(gate : Gate, valid_value):
-    score = 1
-    if gate.operation == Operation.AND and valid_value == 1:
-        score = 2
-    elif gate.operation == Operation.OR and valid_value == 0:
-        score = 2
-    return score
-
-
-def generate_expected_gates(gates : dict, initials : dict, expected_gates : dict, gate_name : str, valid_output : int):
-    expected_gates[gate_name] = valid_output
-    gate = gates[gate_name]
-
-    if gate.in1 in initials:
-        expected_gates[gate.in1] = initials[gate.in1]
-    if gate.in2 in initials:
-        expected_gates[gate.in2] = initials[gate.in2]
-    
-    # If both input gates are unknown
-    in1_known = gate.in1 in expected_gates
-    in2_known = gate.in2 in expected_gates
-    
-    if not in1_known and not in2_known:
-        # If nothing is known, only do the obvious
-        if gate.operation == Operation.AND and valid_output == 1:
-            # Inputs are 1
-            generate_expected_gates(gates, initials, expected_gates, gate.in1, 1)
-            generate_expected_gates(gates, initials, expected_gates, gate.in2, 1)
-        elif gate.operation == Operation.OR and valid_output == 0:
-            generate_expected_gates(gates, initials, expected_gates, gate.in1, 0)
-            generate_expected_gates(gates, initials, expected_gates, gate.in2, 0)
-    elif in1_known and not in2_known:
-        in1 = expected_gates[gate.in1]
-        if gate.operation == Operation.OR and in1 == 0:
-            generate_expected_gates(gates, initials, expected_gates, gate.in2, 0)
-        elif gate.operation == Operation.AND and in1 == 1:
-            generate_expected_gates(gates, initials, expected_gates, gate.in2, 1)
-        elif gate.operation == Operation.XOR:
-            generate_expected_gates(gates, initials, expected_gates, gate.in2, valid_output ^ in1)
-    else:
-        # Both are known, nothing to do
-        pass
-
-
-def affected_gates(gates : dict, start, indent=0):
-    output = []
-    for name, g in gates.items():
-        if g.in1 == start or g.in2 == start:
-            if name not in output:
-                output.append(name)
-                print(' '*indent + f'+{name}')
-                for _new in affected_gates(gates, name, indent+1):
-                    if _new not in output:
-                        output.append(_new)
-    
-    return output
 
 
 def ab_generator(N):
     for i in range(N):
-        for k in range(2):
-            yield 1 << i, k
-
-
-def propagate_status(statuses : dict, gates : dict, gate : str, valid, visited = []):
-    if gate in visited:
-        return
-    visited.append(gate)
-
-    if gate not in statuses:
-        statuses[gate] = [0, 0]
-    if valid:
-        statuses[gate][0] += 1
-    else:
-        statuses[gate][1] += 1
-
-    if gates[gate].in1 in gates:
-        propagate_status(statuses, gates, gates[gate].in1, valid, visited)
-    if gates[gate].in2 in gates:
-        propagate_status(statuses, gates, gates[gate].in2, valid, visited)
-
+        for j in range(N):
+            yield 1 << i, 1 << j
 
 def main():
-    initials, gates = parse_file(sys.argv[1])
+    _, gates = parse_file(sys.argv[1])
 
     # Number of inputs
     N = len([x for x in gates if x.startswith('z')]) - 1
@@ -205,141 +114,16 @@ def main():
 
     calculator = Calculator(gates, 45)
 
+    calculator.set_swaps([('z05', 'jst'), ('mcm', 'gdf'), ('z15', 'dnt'), ('gwc', 'z30')])
+
     nc = math.ceil(math.log10(2**(N+1)-1))
-
-    gate_statuses = {}
-
 
     for a, b in ab_generator(N):
         output, _ = calculator.calc(a, b)
+
         expected_output = a + b
         valid = output == expected_output
-        
-        # Look at the bits
-        for k in range(N+1):
-            z_expected = (expected_output >> k) & 0x01
-            z_calculator = (output >> k) & 0x01
-
-            propagate_status(gate_statuses, gates, f'z{k:02}', z_expected == z_calculator)
-
-        print(f'a={a:{nc}d} b={b:{nc}d} : {output:{nc}d} {"✅" if valid else "❌"}')
-
-    print(gate_statuses)
-
-    # Find all affected gates forward, then backward
-
-
-
-
-    # possible_gate_swaps = {gate : [x for x in list(gates.keys()) if x != gate] for gate in gates}
-
-    # def score():
-    #     return sum([len(swaps) for swaps in possible_gate_swaps.values()])
-    
-    # Loop through 1-bit values for a and b and record each affected gates
-    # If an error is detected, those values are marked as "possibly swapped"
-
-
-
-    # #for i in range(N):
-    # s = 0
-    # print(score())
-    # tries = 100000
-    # while tries:
-    #     a = randint(0, 2**(N+1)-1)
-    #     b = randint(0, 2**(N+1)-1)
-    #     #print(f'{a=}, {b=}')
-    #     #a = 1 << i
-    #     #b = 0
-    #     expected_output = a + b
-    #     output, calculated_gates = calculator.calc(a, b)
-
-
-    #     expected_gates = {}
-    #     # Generate a gate tree of known values based on the expected value
-    #     for i in range(N+1):
-    #         while True:
-    #             L = len(expected_gates)
-    #             generate_expected_gates(gates, initials, expected_gates, f'z{i:02}', (expected_output >> i) & 0x01)
-    #             if len(expected_gates) == L:
-    #                 break
-
-    #     #print(f'Known gates : {len(expected_gates)} / {len(gates)} ({len(expected_gates) / len(gates):.2%})')
-
-    #     for g in gates:
-    #         if gates[g].operation == Operation.AND:
-    #             print('&', end='')
-    #         elif gates[g].operation == Operation.XOR:
-    #             print('^', end='')
-    #         elif gates[g].operation == Operation.OR:
-    #             print('+', end='')
-    #     print()
-    #     for g in gates:
-    #         if g in expected_gates:
-    #             print('#', end='')
-    #         else:
-    #             print('.', end='')
-
-    #     print()
-    #     for g in gates:
-    #         if g.startswith('z'):
-    #             number = int(g.strip('z'))
-    #             print((expected_output >> number) & 0x01, end='')
-    #         else:
-    #             print(' ', end='')
-        
-    #     print()
- 
-    #     #print(f'To get {expected_output}, these are the known gate values : {expected_gates}')
-
-
-    #     # Look in the calculated gates and find which one could be swapped
-
-    #     for A, _ in possible_gate_swaps.items():
-    #         if A in expected_gates:
-    #             if calculated_gates[A] != expected_gates[A]:
-    #                 # If the gate is wrong, remove all of the others that are valid with the same value
-    #                 for gn, value in expected_gates.items():
-    #                     if value == calculated_gates[A]:
-    #                         # This gate CANNOT be the one
-    #                         if gn in possible_gate_swaps[A]:
-    #                             possible_gate_swaps[A].remove(gn)
-
-    #     s2 = score()
-    #     print(s2)
-    #     if s == s2:
-    #         tries -= 1
-    #     s = s2
-
-    #     sleep(0.05)
-
-
-        # for gate, swaps in possible_gate_swaps.items():
-        #     print(f'{gate} : {len(swaps)}')
-
-
-        # print(f'{a:012X} : {output:012X}  {"✅" if valid else "❌"}')
-
-        # gates_to_update = [f'z{i:02}' for i in range(N)]
-        # valid_values = {f'z{i:02}' : (output >> i) & 0x01 for i in range(N)}
-        # while True:
-        #     gate_name = gates_to_update.pop(0)
-        #     gate = gates[gate_name]
-        #     valid_value = valid_values[gate_name]
-        #     z_value = calculated_gates[gate_name][1]
-
-        #     valid = z_value == valid_value
-        #     # Update the gate status
-        #     calculated_gates[start][0] = GateStatus.VALID if valid else GateStatus.INVALID
-        #     # Add the outputs
-    
-
-
-    # Assert calculator works on example 1
-    # x_value = sum([2**i * initial[f'x{i:02}'] for i in range(N)])
-    # y_value = sum([2**i * initial[f'y{i:02}'] for i in range(N)])
-    # day1_value = 47666458872582
-    # assert calculator.calc(x_value, y_value) == day1_value, "Calculator has a problem"
+        print(f'a={a:{nc}d} b={b:{nc}d} : {output:{nc}}/{expected_output} {"✅" if valid else "❌"}')
 
 if __name__ == '__main__':
     main()
