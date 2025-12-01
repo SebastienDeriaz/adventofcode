@@ -10,35 +10,32 @@ from math import floor
 # 6363 wrong
 # 6358 wrong
 # 6408 wrong
+# 6189 wrong
+# 6305 good !
 
 MAX = 99
 
 def next_value(x : int, movement : int):
 
-    previous_value = x
-
     value = x + movement
 
-    counts = 0
-    i = 0
-    while True:
-        if value > MAX:
-            value -= MAX+1
-            if previous_value != 0:
-                counts += 1
-        elif value < 0:
-            value += MAX+1
-            if previous_value != 0:
-                counts += 1
-        else:
-            if value == 0 and i != 0:
-                counts += 1
-            break
+    turns = floor(value / (MAX + 1))
+
+    zero_count = abs(turns)
+
+    if turns < 0 and x == 0:
+        zero_count -= 1
+
+    value = value % (MAX + 1)
+
+    if turns > 0 and value == 0:
+        zero_count -= 1
+
+    if value == 0:
+        zero_count += 1
+
+    #print(f'{x:<4} {+movement:4} -> {value:4} ({zero_count:+d})')
     
-        previous_value = value
-
-        i += 1
-
     return value, zero_count
 
 def main():
@@ -58,25 +55,9 @@ def main():
             else:
                 movement = int(line[1:])
 
-            previous_value = value
-            value += movement  
+            value, counter = next_value(value, movement)
 
-            
-           
-
-            # if previous_value == 0 and movement < 0:
-            #     counts -= 1
-
-            # if value == 0:
-            #     if counts == 0:
-            #         counts += 1
-
-                
-            print(f'{line:<4} {previous_value:4} -> {value:4}', end='')
-            
-            print(f' +{counts}')
-            zero_counter += counts
-    
+            zero_counter += counter
 
     print(zero_counter)
 
