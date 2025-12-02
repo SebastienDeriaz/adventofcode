@@ -15,6 +15,8 @@ from math import log10, floor
 #   Remove them and count inbetween
 #   Repeat for n+1 until it is not valid anymore ()
 
+# 48778610162 too high
+
 
 def to_mn(x : int, n : int):
     return int(str(x)*n)
@@ -24,9 +26,9 @@ def _l_base_leads(x : int, n : int):
     L = len(s)
 
     size = L // n
-    if L == 1:
-        base = 0
-        leads = [0]
+    if L % n != 0:
+        base = None
+        leads = []
     else:
         base = int(s[:size])
         leads = []
@@ -40,32 +42,46 @@ def _l_base_leads(x : int, n : int):
     return L, base, leads
 
 def smaller_or_equal_mn(x : int, n : int):
-    L, base, lead = _l_base_leads(x, n)
+    L, base, leads = _l_base_leads(x, n)
+
+    if base is None:
+        return 10**(L//n)-1
 
     if L == 1:
         return 0
-    if L % 2 == 1:
-        return 10**(L//2)-1
     
     output = base
 
-    if int(lead) < int(base):
-        output -= 1
+    for lead in leads:
+        if lead > base:
+            break
+        elif lead == base:
+            continue
+        else:
+            output -= 1
+            break
 
     return output
 
 def bigger_or_equal_mn(x : int, n : int):
-    L, base, lead = _l_base_leads(x, n)
+    L, base, leads = _l_base_leads(x, n)
+
+    if base is None:
+        return 10**(L//n)
 
     if L == 1:
         return 0
-    if L % 2 == 1:
-        return 10**(L//2)
 
     output = base
 
-    if int(lead) > int(base):
-        output += 1
+    for lead in leads:
+        if lead > base:
+            output += 1
+            break
+        elif lead == base:
+            continue
+        else:
+            break
 
     return output  
 
@@ -76,23 +92,30 @@ def main():
 
         ranges = [[int(x) for x in r.split('-')] for r in data.split(',') if r]
 
-
         _sum = 0
 
         for a, b in ranges:
             n = 2
+            numbers = []
             while True:
+                if n > len(str(b)):
+                    break
+
                 low = smaller_or_equal_mn(a-1, n)
                 high = bigger_or_equal_mn(b+1, n)
 
+                new_numbers = [to_mn(x, n) for x in range(low+1, high)]
 
+                numbers += new_numbers
 
-                print(f'{a}-{b} : ({low})-({high}) n{n} : {numbers}')
                 n += 1
 
+            # Remove duplicate 
+            numbers = list(set(numbers))
+            #print(f'{a}-{b} : {numbers}')
+            assert all(num <= b for num in numbers)
+            assert all(num >= a for num in numbers)
 
-
-            numbers = [to_mn(x) for x in range(low+1, high)]
 
             _sum += sum(numbers)
 
