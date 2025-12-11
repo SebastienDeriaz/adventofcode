@@ -5,6 +5,7 @@ from scipy.optimize import linprog
 import networkx as nx
 from itertools import combinations_with_replacement
 from functools import lru_cache
+from itertools import combinations
 
 def main():
 
@@ -38,24 +39,51 @@ def main():
         print(f'Joltages : {joltages}')
         print(f'Buttons : {buttons}')
 
-        buttons : list[int]
 
-        best_path = recurse_find_path(buttons, tuple(joltages), tuple([0]*len(buttons)))
+        M = np.zeros([len(joltages), len(buttons)])
 
-        print(f'Best path : {best_path}')
-        #print(joltages)
-        #calculated_joltages = calculate_joltage(len(joltages), buttons, best_path)
-        #print(valid_joltage(joltages, calculated_joltages))
-        #print(f'Best path : {best_path} {len(best_path)}')
+        for bi, button in enumerate(buttons):
+            M[button, bi] = 1
+
+        # M = np.block([
+        #     [0, 0, 0, 0, 1, 1],
+        #     [0, 1, 0, 0, 0, 1],
+        #     [0, 0, 1, 1, 1, 0],
+        #     [1, 1, 0, 1, 0, 0],
+        # ])
+
+        # best = None
+        # for x in combinations(M.T, len(joltages)):
+        #     M2 = np.stack(x, axis=1)
+
+        #     try:
+        #         p = np.linalg.pinv(M2) @ joltages
+        #     except np.linalg.LinAlgError:
+        #         pass
+        #     else:
+        #         if p.min() < 0:
+        #             continue
+                    
+        #         n = p.sum().round(2).round()
+        #         if best is None or n < best:
+        #             best = n
 
 
-        #assert valid_joltage(joltages, calculated_joltages)
+        x, _, _, _ = np.linalg.lstsq(M, joltages)
 
-        total_presses += sum(best_path)
+        print(x)
 
-    print(total_presses)
+        print(np.sum(x[x > 0]))
+        
 
-    return
+
+        #print(best)
+
+    #         total_presses += sum(best_path)
+
+    #     print(total_presses)
+
+    #     return
 
 
 
